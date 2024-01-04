@@ -19,6 +19,7 @@ func NewInMemoryDatabase() *InMemoryDatabase {
 	}
 }
 
+// Get gets the value associated with the given key.
 func (db *InMemoryDatabase) Get(key string) (string, error) {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
@@ -42,6 +43,7 @@ func (db *InMemoryDatabase) Get(key string) (string, error) {
 	return value, nil
 }
 
+// Set store a key-value pair in the database.
 func (db *InMemoryDatabase) Set(key string, value string) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -55,6 +57,7 @@ func (db *InMemoryDatabase) Set(key string, value string) error {
 	return nil
 }
 
+// Delete deletes the key-value pair associated with the given key.
 func (db *InMemoryDatabase) Delete(key string) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -68,27 +71,17 @@ func (db *InMemoryDatabase) Delete(key string) error {
 	return nil
 }
 
+// StartTransaction Start a new transaction. All operations within this transaction are isolated from others.
 func (db *InMemoryDatabase) StartTransaction() error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
-
-	// snapshot := make(map[string]string)
-
-	// if (len(db.transactions)) > 0 {
-	// 	for key, value := range db.transactions[len(db.transactions)-1] {
-	// 		snapshot[key] = value
-	// 	}
-	// } else {
-	// 	for key, value := range db.data {
-	// 		snapshot[key] = value
-	// 	}
-	// }
 
 	db.transactions = append(db.transactions, make(map[string]string))
 
 	return nil
 }
 
+// Commit commits all changes made within the current transaction to the database.
 func (db *InMemoryDatabase) Commit() error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -116,6 +109,7 @@ func (db *InMemoryDatabase) Commit() error {
 	return nil
 }
 
+// Rollback rollbacks all changes made within the current transaction and discard them
 func (db *InMemoryDatabase) Rollback() error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
