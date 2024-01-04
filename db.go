@@ -13,6 +13,9 @@ type InMemoryDatabase struct {
 
 const deletedMarker = "<deleted>"
 
+var ErrKeyNotFound = errors.New("key not found")
+var ErrNoTransaction = errors.New("no transaction started")
+
 func NewInMemoryDatabase() *InMemoryDatabase {
 	return &InMemoryDatabase{
 		data: make(map[string]string),
@@ -28,7 +31,7 @@ func (db *InMemoryDatabase) Get(key string) (string, error) {
 		for i := len(db.transactions) - 1; i >= 0; i-- {
 			if value, ok := db.transactions[i][key]; ok {
 				if value == deletedMarker {
-					return "", errors.New("key not found")
+					return "", ErrKeyNotFound
 				}
 				return value, nil
 			}
@@ -37,7 +40,7 @@ func (db *InMemoryDatabase) Get(key string) (string, error) {
 
 	value, ok := db.data[key]
 	if !ok {
-		return "", errors.New("key not found")
+		return "", ErrKeyNotFound
 	}
 
 	return value, nil
@@ -87,7 +90,7 @@ func (db *InMemoryDatabase) Commit() error {
 	defer db.mu.Unlock()
 
 	if len(db.transactions) == 0 {
-		return errors.New("no transaction started")
+		return ErrNoTransaction
 	}
 
 	if len(db.transactions) == 1 {
@@ -115,7 +118,7 @@ func (db *InMemoryDatabase) Rollback() error {
 	defer db.mu.Unlock()
 
 	if len(db.transactions) == 0 {
-		return errors.New("no transaction started")
+		return ErrNoTransaction
 	}
 
 	db.transactions = db.transactions[:len(db.transactions)-1]
