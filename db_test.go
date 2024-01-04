@@ -7,7 +7,7 @@ import (
 )
 
 func TestInMemmoryDatabaseCommit(t *testing.T) {
-	db := NewInMemmoryDatabase()
+	db := NewInMemoryDatabase()
 
 	require.NoError(t, db.Set("key1", "value1"))
 	require.NoError(t, db.StartTransaction())
@@ -20,7 +20,7 @@ func TestInMemmoryDatabaseCommit(t *testing.T) {
 }
 
 func TestInMemmoryDatabaseRollback(t *testing.T) {
-	db := NewInMemmoryDatabase()
+	db := NewInMemoryDatabase()
 
 	require.NoError(t, db.Set("key1", "value1"))
 	require.NoError(t, db.StartTransaction())
@@ -41,7 +41,7 @@ func TestInMemmoryDatabaseRollback(t *testing.T) {
 }
 
 func TestInMemmoryDatabaseNestedTransactions(t *testing.T) {
-	db := NewInMemmoryDatabase()
+	db := NewInMemoryDatabase()
 
 	require.NoError(t, db.Set("key1", "value1"))
 	require.NoError(t, db.StartTransaction())
@@ -71,7 +71,7 @@ func TestInMemmoryDatabaseNestedTransactions(t *testing.T) {
 }
 
 func TestInMemmoryDatabaseNestedTransactionsWithRollBack(t *testing.T) {
-	db := NewInMemmoryDatabase()
+	db := NewInMemoryDatabase()
 
 	require.NoError(t, db.Set("key1", "value1"))
 	require.NoError(t, db.StartTransaction())

@@ -1,100 +1,130 @@
 package main
 
-import "errors"
+import (
+	"errors"
+	"sync"
+)
 
-type InMemmoryDatabase struct {
+type InMemoryDatabase struct {
 	data         map[string]string
 	transactions []map[string]string
+	mu           sync.RWMutex
 }
 
 const deletedMarker = "<deleted>"
 
-func NewInMemmoryDatabase() *InMemmoryDatabase {
-	return &InMemmoryDatabase{
-		data:         make(map[string]string),
-		transactions: make([]map[string]string, 0),
+func NewInMemoryDatabase() *InMemoryDatabase {
+	return &InMemoryDatabase{
+		data: make(map[string]string),
 	}
 }
 
-// Get returns the value for the given key.
-func (db *InMemmoryDatabase) Get(key string) (string, error) {
-	for i := len(db.transactions) - 1; i >= 0; i-- {
-		value, ok := db.transactions[i][key]
-		if ok {
-			if value == deletedMarker {
-				return "", errors.New("key not found")
+func (db *InMemoryDatabase) Get(key string) (string, error) {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+
+	if len(db.transactions) > 0 {
+		for i := len(db.transactions) - 1; i >= 0; i-- {
+			if value, ok := db.transactions[i][key]; ok {
+				if value == deletedMarker {
+					return "", errors.New("key not found")
+				}
+				return value, nil
 			}
-			return value, nil
 		}
 	}
+
 	value, ok := db.data[key]
-	if !ok || value == deletedMarker {
+	if !ok {
 		return "", errors.New("key not found")
 	}
+
 	return value, nil
 }
 
-// Set sets the value for the given key.
-func (db *InMemmoryDatabase) Set(key string, value string) error {
+func (db *InMemoryDatabase) Set(key string, value string) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
 	if len(db.transactions) > 0 {
 		db.transactions[len(db.transactions)-1][key] = value
 	} else {
 		db.data[key] = value
 	}
+
 	return nil
 }
 
-// Delete the key-value pair associated with the given key.
-func (db *InMemmoryDatabase) Delete(key string) error {
+func (db *InMemoryDatabase) Delete(key string) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
 	if len(db.transactions) > 0 {
 		db.transactions[len(db.transactions)-1][key] = deletedMarker
 	} else {
-		db.data[key] = deletedMarker
+		delete(db.data, key)
 	}
+
 	return nil
 }
 
-// Start a new transaction. All operations within this transaction are isolated from others.
-func (db *InMemmoryDatabase) StartTransaction() error {
+func (db *InMemoryDatabase) StartTransaction() error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	// snapshot := make(map[string]string)
+
+	// if (len(db.transactions)) > 0 {
+	// 	for key, value := range db.transactions[len(db.transactions)-1] {
+	// 		snapshot[key] = value
+	// 	}
+	// } else {
+	// 	for key, value := range db.data {
+	// 		snapshot[key] = value
+	// 	}
+	// }
+
 	db.transactions = append(db.transactions, make(map[string]string))
+
 	return nil
 }
 
-// Commit all changes made within the current transaction to the database.
-func (db *InMemmoryDatabase) Commit() error {
-	if len(db.transactions) > 0 {
-		transaction := db.transactions[len(db.transactions)-1]
-		if len(db.transactions) > 1 {
-			previousTransaction := db.transactions[len(db.transactions)-2]
-			for key, value := range transaction {
-				if value == deletedMarker {
-					if _, ok := previousTransaction[key]; ok {
-						delete(previousTransaction, key)
-					}
-				} else {
-					previousTransaction[key] = value
-				}
+func (db *InMemoryDatabase) Commit() error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	if len(db.transactions) == 0 {
+		return errors.New("no transaction started")
+	}
+
+	if len(db.transactions) == 1 {
+		for key, value := range db.transactions[len(db.transactions)-1] {
+			if value == deletedMarker {
+				delete(db.data, key)
+				continue
 			}
-		} else {
-			for key, value := range transaction {
-				if value == deletedMarker {
-					if _, ok := db.data[key]; ok {
-						delete(db.data, key)
-					}
-				} else {
-					db.data[key] = value
-				}
-			}
+			db.data[key] = value
 		}
-		db.transactions = db.transactions[:len(db.transactions)-1]
+	} else {
+		for key, value := range db.transactions[len(db.transactions)-1] {
+			db.transactions[len(db.transactions)-2][key] = value
+		}
 	}
+
+	db.transactions = db.transactions[:len(db.transactions)-1]
+
 	return nil
 }
 
-// Roll back all changes made within the current transaction and discard them.
-func (db *InMemmoryDatabase) Rollback() error {
-	if len(db.transactions) > 0 {
-		db.transactions = db.transactions[:len(db.transactions)-1]
+func (db *InMemoryDatabase) Rollback() error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	if len(db.transactions) == 0 {
+		return errors.New("no transaction started")
 	}
+
+	db.transactions = db.transactions[:len(db.transactions)-1]
+
 	return nil
 }
