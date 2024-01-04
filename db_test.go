@@ -60,13 +60,13 @@ func TestInMemmoryDatabaseNestedTransactions(t *testing.T) {
 	require.NoError(t, db.Commit())
 
 	value, err = db.Get("key1")
-	require.Error(t, err) // TODO: change to not found error
+	require.Error(t, err)
 	require.Equal(t, "", value)
 
 	require.NoError(t, db.Commit())
 
 	value, err = db.Get("key1")
-	require.Error(t, err) // TODO: change to not found error
+	require.Error(t, err)
 	require.Equal(t, "", value)
 }
 
