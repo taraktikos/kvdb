@@ -2,13 +2,11 @@ package main
 
 import (
 	"errors"
-	"sync"
 )
 
 type InMemoryDatabase struct {
 	data         map[string]string
 	transactions []map[string]string
-	mu           sync.RWMutex
 }
 
 const deletedMarker = "<deleted>"
@@ -24,9 +22,6 @@ func NewInMemoryDatabase() *InMemoryDatabase {
 
 // Get gets the value associated with the given key.
 func (db *InMemoryDatabase) Get(key string) (string, error) {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
 	if len(db.transactions) > 0 {
 		for i := len(db.transactions) - 1; i >= 0; i-- {
 			if value, ok := db.transactions[i][key]; ok {
@@ -48,9 +43,6 @@ func (db *InMemoryDatabase) Get(key string) (string, error) {
 
 // Set store a key-value pair in the database.
 func (db *InMemoryDatabase) Set(key string, value string) error {
-	db.mu.Lock()
-	defer db.mu.Unlock()
-
 	if len(db.transactions) > 0 {
 		db.transactions[len(db.transactions)-1][key] = value
 	} else {
@@ -62,9 +54,6 @@ func (db *InMemoryDatabase) Set(key string, value string) error {
 
 // Delete deletes the key-value pair associated with the given key.
 func (db *InMemoryDatabase) Delete(key string) error {
-	db.mu.Lock()
-	defer db.mu.Unlock()
-
 	if len(db.transactions) > 0 {
 		db.transactions[len(db.transactions)-1][key] = deletedMarker
 	} else {
@@ -76,9 +65,6 @@ func (db *InMemoryDatabase) Delete(key string) error {
 
 // StartTransaction Start a new transaction. All operations within this transaction are isolated from others.
 func (db *InMemoryDatabase) StartTransaction() error {
-	db.mu.Lock()
-	defer db.mu.Unlock()
-
 	db.transactions = append(db.transactions, make(map[string]string))
 
 	return nil
@@ -86,9 +72,6 @@ func (db *InMemoryDatabase) StartTransaction() error {
 
 // Commit commits all changes made within the current transaction to the database.
 func (db *InMemoryDatabase) Commit() error {
-	db.mu.Lock()
-	defer db.mu.Unlock()
-
 	if len(db.transactions) == 0 {
 		return ErrNoTransaction
 	}
@@ -114,9 +97,6 @@ func (db *InMemoryDatabase) Commit() error {
 
 // Rollback rollbacks all changes made within the current transaction and discard them
 func (db *InMemoryDatabase) Rollback() error {
-	db.mu.Lock()
-	defer db.mu.Unlock()
-
 	if len(db.transactions) == 0 {
 		return ErrNoTransaction
 	}

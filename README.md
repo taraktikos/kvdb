@@ -3,6 +3,6 @@
 
 ## Run tests
 ```shell
-go tests
+go test
 ```
 
